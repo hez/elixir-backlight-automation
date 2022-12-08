@@ -7,7 +7,7 @@ A automatic screen dimmer for the Raspberry Pi 7" touch screen.
 ```elixir
 def deps do
   [
-    {:rpi_screen_dimmer, github: "hez/rpi-screen-dimmer", tag: "v0.1.0"}
+    {:rpi_screen_dimmer, github: "hez/rpi-screen-dimmer", tag: "v0.1.1"}
   ]
 end
 ```
