@@ -1,0 +1,37 @@
+name: Continuous Integration
+
+on:
+  workflow_call:
+
+jobs:
+  server_test:
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache dialyzer plts
+        uses: actions/cache@v3.3.2
+        with:
+          path: priv/plts
+          key: ${{runner.os}}-${{hashFiles('**/.tool-versions')}}-plts
+
+      - name: Setup elixir
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: ".tool-versions"
+          version-type: "strict"
+
+      - name: Deps get
+        run: mix deps.get
+#      - name: Check Credo
+#        run: mix credo
+      - name: Check Formatting
+        run: mix format --check-formatted
+      - name: Run Tests
+        run: mix 'do' compile --warnings-as-errors, test
+#      - name: Dialyzer
+#        run: mix dialyzer --halt-exit-status
