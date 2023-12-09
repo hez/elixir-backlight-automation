@@ -68,9 +68,15 @@ defmodule RpiScreenDimmer do
   @impl GenServer
   def handle_cast({:set_level, new_level}, state) do
     case File.write(state.control_file, Integer.to_string(new_level), [:write]) do
-      :ok -> Logger.debug("Wrote new #{new_level} level to control file")
-      err -> Logger.warn("Failed to write new control level, #{inspect(err)} to #{inspect(state.control_file)}")
+      :ok ->
+        Logger.debug("Wrote new #{new_level} level to control file")
+
+      err ->
+        Logger.warning(
+          "Failed to write new control level, #{inspect(err)} to #{inspect(state.control_file)}"
+        )
     end
+
     {:noreply, state}
   end
 
@@ -100,9 +106,14 @@ defmodule RpiScreenDimmer do
   def find_control_file do
     case File.ls(@base_control_dir) do
       {:ok, dirs} ->
-        Logger.debug("found the following dirs for possible control files, picking the first #{inspect(dirs)}")
+        Logger.debug(
+          "found the following dirs for possible control files, picking the first #{inspect(dirs)}"
+        )
+
         @base_control_dir <> List.first(dirs) <> @control_file
-      err -> Logger.warn("failed to find control file, #{inspect(err)}")
+
+      err ->
+        Logger.warning("failed to find control file, #{inspect(err)}")
     end
   end
 
