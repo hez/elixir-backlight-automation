@@ -23,7 +23,7 @@ defmodule RpiScreenDimmer.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:input_event, github: "hez/input_event", branch: "feature/no-sticky-bit"}
+      {:input_event, "~> 1.4"}
     ]
   end
 end
