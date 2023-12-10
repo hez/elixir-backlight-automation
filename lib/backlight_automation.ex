@@ -1,11 +1,18 @@
-defmodule RpiScreenDimmer do
+defmodule BacklightAutomation do
+  # TODO Make touch screen names configurable
+  # TODO Allow for ../intel_backlight/..
+  # TODO read max_brightness
   use GenServer
   require Logger
 
   @name __MODULE__
 
-  @touchscreen_name "raspberrypi-ts"
-  @alt_name "generic ft5x06 (79)"
+  @touchscreen_names [
+    # Raspberry pi touchscreens
+    "raspberrypi-ts", "generic ft5x06 (79)",
+    # Dell laptop touchscreen
+    "G2Touch Multi-Touch by G2TSP"
+  ]
 
   @active_level_default 255
   @inactive_level_default 30
@@ -62,7 +69,8 @@ defmodule RpiScreenDimmer do
     {:noreply, state}
   end
 
-  @impl GenServer
+  # Handle InputEvents by marking activity.
+  @impl true
   def handle_info(_val, state), do: handle_info(:refresh, %{state | last_activity: timestamp()})
 
   @impl GenServer
@@ -99,7 +107,7 @@ defmodule RpiScreenDimmer do
 
   def find_touch_screen_input do
     InputEvent.enumerate()
-    |> Enum.find(fn {_name, info} -> info.name == @touchscreen_name or info.name == @alt_name end)
+    |> Enum.find(fn {_name, info} -> Enum.member?(@touchscreen_names, info.name) end)
     |> elem(0)
   end
 
