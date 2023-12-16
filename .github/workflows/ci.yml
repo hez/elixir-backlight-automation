@@ -26,11 +26,11 @@ jobs:
 
       - name: Deps get
         run: mix deps.get
-#      - name: Check Credo
-#        run: mix credo
+      - name: Check Credo
+        run: mix credo
       - name: Check Formatting
         run: mix format --check-formatted
       - name: Run Tests
         run: mix 'do' compile --warnings-as-errors, test
-#      - name: Dialyzer
-#        run: mix dialyzer --halt-exit-status
+      - name: Dialyzer
+        run: mix dialyzer --halt-exit-status

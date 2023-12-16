@@ -23,6 +23,15 @@ defmodule RpiScreenDimmer.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # dev
+      {:credo, "~> 1.7.0", only: [:dev, :test], runtime: false},
+      {:credo_single_line_functions,
+       github: "Baradoy/credo_single_line_functions",
+       tag: "v0.1.0",
+       only: [:dev, :test],
+       runtime: false},
+      {:dialyxir, "~> 1.4.0", only: [:dev, :test], runtime: false},
+      # eveyrthing else
       {:input_event, "~> 1.4"}
     ]
   end
