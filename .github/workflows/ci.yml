@@ -1,7 +1,6 @@
 name: Continuous Integration
 
-on:
-  workflow_call:
+on: push
 
 jobs:
   server_test:
