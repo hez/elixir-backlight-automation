@@ -1,11 +1,11 @@
-defmodule RpiScreenDimmer.MixProject do
+defmodule BacklightAutomation.MixProject do
   use Mix.Project
 
   @version "0.1.2"
 
   def project do
     [
-      app: :rpi_screen_dimmer,
+      app: :backlight_automation,
       version: @version,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,

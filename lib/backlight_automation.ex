@@ -1,18 +1,93 @@
-defmodule RpiScreenDimmer do
+defmodule BacklightAutomation do
+  @moduledoc """
+  ## Example InputEvents
+
+  - Dell laptop w/ touchscreen
+    {"/dev/input/event5",
+       %InputEvent.Info{
+         input_event_version: "1.0.1",
+         name: "G2Touch Multi-Touch by G2TSP",
+         bus: 3,
+         vendor: 10900,
+         product: 21001,
+         version: 273,
+         report_info: [
+           ev_msc: [:msc_timestamp],
+           ev_abs: [
+             abs_x: %{
+               max: 1920,
+               min: 0,
+               value: 1384,
+               flat: 0,
+               fuzz: 0,
+               resolution: 6
+             },
+             abs_y: %{
+               max: 1080,
+               min: 0,
+               value: 1058,
+               flat: 0,
+               fuzz: 0,
+               resolution: 6
+             },
+             abs_mt_slot: %{
+               max: 9,
+               min: 0,
+               value: 0,
+               flat: 0,
+               fuzz: 0,
+               resolution: 0
+             },
+             abs_mt_position_x: %{
+               max: 1920,
+               min: 0,
+               value: 0,
+               flat: 0,
+               fuzz: 0,
+               resolution: 6
+             },
+             abs_mt_position_y: %{
+               max: 1080,
+               min: 0,
+               value: 0,
+               flat: 0,
+               fuzz: 0,
+               resolution: 6
+             },
+             abs_mt_tracking_id: %{
+               max: 65535,
+               min: 0,
+               value: 0,
+               flat: 0,
+               fuzz: 0,
+               resolution: 0
+             }
+           ],
+           ev_key: [:btn_touch]
+         ]
+       }},
+  """
+  # TODO Make touch screen names configurable
+  # TODO Allow for ../intel_backlight/..
+  # TODO read max_brightness
   use GenServer
   require Logger
 
+  alias BacklightAutomation.BacklightDevice
+
   @name __MODULE__
 
-  @touchscreen_name "raspberrypi-ts"
-  @alt_name "generic ft5x06 (79)"
+  @touchscreen_names [
+    # Raspberry pi touchscreens
+    "raspberrypi-ts",
+    "generic ft5x06 (79)",
+    # Dell laptop touchscreen
+    "G2Touch Multi-Touch by G2TSP"
+  ]
 
   @active_level_default 255
   @inactive_level_default 30
   @dim_interval_default 30
-
-  @base_control_dir "/sys/class/backlight/"
-  @control_file "/brightness"
 
   @refresh_interval 5_000
 
@@ -41,12 +116,12 @@ defmodule RpiScreenDimmer do
 
   @impl GenServer
   def init(opts) do
-    control_file = find_control_file()
+    backlight = BacklightDevice.new()
     InputEvent.start_link(find_touch_screen_input())
     :timer.send_interval(@refresh_interval, self(), :refresh)
 
     state = %{
-      control_file: control_file,
+      backlight: backlight,
       active_level: Keyword.get(opts, :active_level, @active_level_default),
       dim_interval: Keyword.get(opts, :dim_interval, @dim_interval_default),
       inactive_level: Keyword.get(opts, :inactive_level, @inactive_level_default),
@@ -62,21 +137,13 @@ defmodule RpiScreenDimmer do
     {:noreply, state}
   end
 
-  @impl GenServer
+  # Handle InputEvents by marking activity.
+  @impl true
   def handle_info(_val, state), do: handle_info(:refresh, %{state | last_activity: timestamp()})
 
   @impl GenServer
   def handle_cast({:set_level, new_level}, state) do
-    case File.write(state.control_file, Integer.to_string(new_level), [:write]) do
-      :ok ->
-        Logger.debug("Wrote new #{new_level} level to control file")
-
-      err ->
-        Logger.warning(
-          "Failed to write new control level, #{inspect(err)} to #{inspect(state.control_file)}"
-        )
-    end
-
+    BacklightDevice.set_level(state.backlight, new_level)
     {:noreply, state}
   end
 
@@ -99,22 +166,8 @@ defmodule RpiScreenDimmer do
 
   def find_touch_screen_input do
     InputEvent.enumerate()
-    |> Enum.find(fn {_name, info} -> info.name == @touchscreen_name or info.name == @alt_name end)
+    |> Enum.find(fn {_name, info} -> Enum.member?(@touchscreen_names, info.name) end)
     |> elem(0)
-  end
-
-  def find_control_file do
-    case File.ls(@base_control_dir) do
-      {:ok, dirs} ->
-        Logger.debug(
-          "found the following dirs for possible control files, picking the first #{inspect(dirs)}"
-        )
-
-        @base_control_dir <> List.first(dirs) <> @control_file
-
-      err ->
-        Logger.warning("failed to find control file, #{inspect(err)}")
-    end
   end
 
   defp timestamp, do: System.monotonic_time(:second)
