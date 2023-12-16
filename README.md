@@ -1,13 +1,13 @@
 # BacklightAutomation
 
-A automatic screen dimmer for the Raspberry Pi 7" touch screen.
+An automatic screen dimmer for the Raspberry Pi 7" touch screen.
 
 ## Installation
 
 ```elixir
 def deps do
   [
-    {:backlight_automation, github: "hez/backlight-automation", tag: "v0.1.2"}
+    {:backlight_automation, github: "hez/elixir-backlight-automation", tag: "v0.1.2"}
   ]
 end
 ```
