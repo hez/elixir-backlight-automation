@@ -117,7 +117,7 @@ defmodule BacklightAutomation do
 
   @impl GenServer
   def init(opts) do
-    backlight = BacklightDevice.new()
+    {:ok, backlight} = BacklightDevice.new()
     InputEvent.start_link(find_touch_screen_input())
     :timer.send_interval(@refresh_interval, self(), :refresh)
 

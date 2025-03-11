@@ -2,7 +2,7 @@ defmodule BacklightAutomation.BacklightDevice do
   require Logger
   @control_file "brightness"
 
-  @default_directory Path.join(~W{sys class backlight})
+  @default_directory Path.join(~W{/ sys class backlight})
   @default_max 255
 
   defstruct base_directory: @default_directory, directory: nil, max_brightness: @default_max
@@ -31,7 +31,7 @@ defmodule BacklightAutomation.BacklightDevice do
   @spec control_file(t()) :: String.t()
   def control_file(backlight), do: Path.join([backlight.directory, @control_file])
 
-  defp find_device_directory(backlight) do
+  def find_device_directory(backlight) do
     case File.ls(backlight.base_directory) do
       {:ok, dirs} ->
         Logger.debug(
