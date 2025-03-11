@@ -81,6 +81,7 @@ defmodule BacklightAutomation do
     # Raspberry pi touchscreens
     "raspberrypi-ts",
     "generic ft5x06 (79)",
+    "10-0038 generic ft5x06 (79)",
     # Dell laptop touchscreen
     "G2Touch Multi-Touch by G2TSP"
   ]
