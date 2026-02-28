@@ -76,11 +76,9 @@ defmodule BacklightAutomation.Server do
 
   @name __MODULE__
 
-  @active_level_default 255
-  @inactive_level_default 30
-  @dim_interval_default 30
-
   @refresh_interval 5_000
+
+  defguard is_valid_level(level) when is_integer(level) and level >= 0
 
   @spec start_link(list()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(opts) do
@@ -104,54 +102,39 @@ defmodule BacklightAutomation.Server do
   def touch, do: GenServer.cast(@name, :touch)
 
   @spec current_level() :: integer()
-  def current_level do
-    state = state()
-
-    if active?(state) do
-      state.active_level
-    else
-      state.inactive_level
-    end
-  end
+  def current_level, do: state().current_level
 
   @spec set_level(integer()) :: :ok
-  def set_level(new_level) when is_integer(new_level) and new_level >= 0,
+  def set_level(new_level) when is_valid_level(new_level),
     do: GenServer.cast(@name, {:set_level, new_level})
 
+  def max_brightness, do: state().backlight.max_brightness
+
+  @spec active?() :: boolean()
+  def active?, do: state() |> active?()
+
+  @spec state() :: BacklightAutomation.t()
   def state, do: GenServer.call(@name, :state)
 
   @impl GenServer
   def init(opts) do
-    backlight = BacklightDevice.new()
-
-    state =
-      %{
-        backlight: backlight,
-        pubsub_name: Keyword.get(opts, :pubsub),
-        active_level: Keyword.get(opts, :active_level, @active_level_default),
-        dim_interval: Keyword.get(opts, :dim_interval, @dim_interval_default),
-        inactive_level: Keyword.get(opts, :inactive_level, @inactive_level_default),
-        last_activity: BacklightAutomation.timestamp(),
-        input_devices: nil,
-        input_devices_started?: false
-      }
-      |> start_input_devices()
-
+    state = opts |> BacklightAutomation.new() |> start_input_devices()
     :timer.send_interval(@refresh_interval, self(), :refresh)
     {:ok, state}
   end
 
   @impl GenServer
   def handle_info(:refresh, state) do
-    backlight =
-      if BacklightDevice.valid?(state.backlight), do: state.backlight, else: BacklightDevice.new()
+    state = state |> ensure_valid_backlight() |> start_input_devices()
 
-    state =
-      %{state | backlight: backlight}
-      |> start_input_devices()
+    new_state =
+      cond do
+        active?(state) -> set_level(state, state.active_level)
+        not active?(state) -> set_level(state, state.inactive_level)
+        true -> state
+      end
 
-    state |> active?() |> set_level(state)
-    {:noreply, state}
+    {:noreply, new_state}
   end
 
   # Handle InputEvents by marking activity.
@@ -167,10 +150,7 @@ defmodule BacklightAutomation.Server do
     do: handle_info(:refresh, %{state | last_activity: BacklightAutomation.timestamp()})
 
   @impl GenServer
-  def handle_cast({:set_level, new_level}, state) do
-    BacklightDevice.set_level(state.backlight, new_level)
-    {:noreply, state}
-  end
+  def handle_cast({:set_level, new_level}, state), do: {:noreply, set_level(state, new_level)}
 
   @impl GenServer
   def handle_cast({:set_active_level, new_level}, state),
@@ -204,6 +184,40 @@ defmodule BacklightAutomation.Server do
     end
   end
 
-  defp set_level(true, %{active_level: level}), do: set_level(level)
-  defp set_level(false, %{inactive_level: level}), do: set_level(level)
+  defp set_level(
+         %{backlight: %BacklightDevice{} = backlight, current_level: current_level} = state,
+         new_level
+       )
+       when is_valid_level(new_level) and current_level != new_level do
+    Logger.warning("about to set level to #{new_level} from #{current_level}")
+    BacklightDevice.set_level(backlight, new_level)
+    broadcast_level_change(state, new_level)
+    %{state | current_level: new_level}
+  end
+
+  defp set_level(state, _new_level), do: state
+
+  defp ensure_valid_backlight(%{backlight: backlight} = state) do
+    if BacklightDevice.valid?(backlight),
+      do: state,
+      else: %{state | backlight: BacklightDevice.new()}
+  end
+
+  defp broadcast_level_change(
+         %{pubsub_name: pubsub_name, current_level: current_level} = state,
+         new_level
+       )
+       when not is_nil(pubsub_name) do
+    Phoenix.PubSub.broadcast(
+      pubsub_name,
+      BacklightAutomation.pubsub_topic(),
+      {:level_change,
+       %{current_level: current_level, new_level: new_level, active?: active?(state)}}
+    )
+  end
+
+  defp broadcast_level_change(state, _new_level) do
+    Logger.debug("cannot broadcast level change #{inspect(state)}")
+    :ok
+  end
 end
