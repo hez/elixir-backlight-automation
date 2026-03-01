@@ -32,8 +32,7 @@ defmodule BacklightAutomation.MixProject do
        runtime: false},
       {:dialyxir, "~> 1.4.0", only: [:dev, :test], runtime: false},
       # eveyrthing else
-      {:input_event, "~> 1.4"},
-      {:phoenix_pubsub, "~> 2.1", optional: true}
+      {:input_event, "~> 1.4"}
     ]
   end
 end

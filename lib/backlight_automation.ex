@@ -1,10 +1,9 @@
 defmodule BacklightAutomation do
   # TODO Allow for ../intel_backlight/..
-  alias BacklightAutomation.Server
+  use Supervisor
 
   @type t :: %__MODULE__{
           backlight: BacklightAutomation.BacklightDevice.t(),
-          pubsub_name: atom() | nil,
           current_level: integer() | nil,
           active_level: integer() | nil,
           dim_interval: integer() | nil,
@@ -15,7 +14,6 @@ defmodule BacklightAutomation do
         }
 
   defstruct backlight: nil,
-            pubsub_name: nil,
             current_level: nil,
             active_level: nil,
             dim_interval: nil,
@@ -28,11 +26,26 @@ defmodule BacklightAutomation do
   @inactive_level_default 30
   @dim_interval_default 30
 
+  def start_link(opts \\ []) do
+    {name, rest} = Keyword.pop(opts, :name, __MODULE__)
+    Supervisor.start_link(__MODULE__, rest, name: name)
+  end
+
+  @impl Supervisor
+  def init(opts \\ []) do
+    children = [
+      {Registry, name: registry_name(), keys: :duplicate},
+      {BacklightAutomation.Server, opts}
+    ]
+
+    opts = [strategy: :rest_for_one, name: __MODULE__]
+    Supervisor.init(children, opts)
+  end
+
   @spec new(Keyword.t()) :: t()
   def new(opts \\ []) do
     %__MODULE__{
       backlight: BacklightAutomation.BacklightDevice.new(),
-      pubsub_name: Keyword.get(opts, :pubsub),
       current_level: nil,
       active_level: Keyword.get(opts, :active_level, @active_level_default),
       dim_interval: Keyword.get(opts, :dim_interval, @dim_interval_default),
@@ -44,15 +57,17 @@ defmodule BacklightAutomation do
   end
 
   def timestamp, do: System.monotonic_time(:second)
-  def pubsub_topic, do: "backlight_automation"
+  def registry_name, do: Registry.BacklightAutomationPubSub
+  def registry_topic, do: "backlight_level_change"
+  def register(opts \\ []), do: Registry.register( registry_name(), registry_topic(), opts )
 
-  defdelegate active?, to: Server
-  defdelegate active_level(new_level), to: Server
-  defdelegate current_level, to: Server
-  defdelegate dim_interval(interval_in_sec), to: Server
-  defdelegate inactive_level(new_level), to: Server
-  defdelegate max_brightness, to: Server
-  defdelegate set_level(new_level), to: Server
-  defdelegate state, to: Server
-  defdelegate touch, to: Server
+  defdelegate active?, to: BacklightAutomation.Server
+  defdelegate active_level(new_level), to: BacklightAutomation.Server
+  defdelegate current_level, to: BacklightAutomation.Server
+  defdelegate dim_interval(interval_in_sec), to: BacklightAutomation.Server
+  defdelegate inactive_level(new_level), to: BacklightAutomation.Server
+  defdelegate max_brightness, to: BacklightAutomation.Server
+  defdelegate set_level(new_level), to: BacklightAutomation.Server
+  defdelegate state, to: BacklightAutomation.Server
+  defdelegate touch, to: BacklightAutomation.Server
 end
