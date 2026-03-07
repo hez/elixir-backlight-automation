@@ -7,19 +7,19 @@ An automatic screen dimmer for the Raspberry Pi 7" touch screen.
 ```elixir
 def deps do
   [
-    {:backlight_automation, github: "hez/elixir-backlight-automation", tag: "v0.3.0"}
+    {:backlight_automation, github: "hez/elixir-backlight-automation", tag: "v0.4.0"}
   ]
 end
 ```
 
 ## Usage
 
-Add the server to your application start up.
+Add the BacklightAutomation server to your application start up.
 
 ```elixir
 children = [
   # ....
-  {BacklightAutomation.Server, [active_level: 100, inactive_level: 30, dim_interval: 60]}
+  {BacklightAutomation, [active_level: 100, inactive_level: 30, dim_interval: 60]}
 ]
 ```
 
