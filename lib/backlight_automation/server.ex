@@ -83,9 +83,7 @@ defmodule BacklightAutomation.Server do
   @spec start_link(list()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(opts) do
     Logger.warning("starting BacklightAutomation server")
-    res = GenServer.start_link(@name, opts, name: @name)
-    Logger.error("got #{inspect(res)}")
-    res
+    GenServer.start_link(@name, opts, name: @name)
   end
 
   @spec active_level(integer()) :: :ok
@@ -203,21 +201,13 @@ defmodule BacklightAutomation.Server do
       else: %{state | backlight: BacklightDevice.new()}
   end
 
-  defp broadcast_level_change(
-         %{pubsub_name: pubsub_name, current_level: current_level} = state,
-         new_level
-       )
-       when not is_nil(pubsub_name) do
-    Phoenix.PubSub.broadcast(
-      pubsub_name,
-      BacklightAutomation.pubsub_topic(),
-      {:level_change,
-       %{current_level: current_level, new_level: new_level, active?: active?(state)}}
-    )
-  end
+  defp broadcast_level_change(%{current_level: current_level} = state, new_level) do
+    payload = %{current_level: current_level, new_level: new_level, active?: active?(state)}
 
-  defp broadcast_level_change(state, _new_level) do
-    Logger.debug("cannot broadcast level change #{inspect(state)}")
-    :ok
+    Registry.dispatch(
+      BacklightAutomation.registry_name(),
+      BacklightAutomation.registry_topic(),
+      &for({pid, _} <- &1, do: send(pid, {:backlight_level_change, payload}))
+    )
   end
 end
