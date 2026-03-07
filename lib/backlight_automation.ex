@@ -25,6 +25,7 @@ defmodule BacklightAutomation do
   @active_level_default 255
   @inactive_level_default 30
   @dim_interval_default 30
+  @unsupported_oses [{:unix, :darwin}]
 
   def start_link(opts \\ []) do
     {name, rest} = Keyword.pop(opts, :name, __MODULE__)
@@ -60,6 +61,7 @@ defmodule BacklightAutomation do
   def registry_name, do: Registry.BacklightAutomationPubSub
   def registry_topic, do: "backlight_level_change"
   def register(opts \\ []), do: Registry.register(registry_name(), registry_topic(), opts)
+  def supported_os?, do: :os.type() not in @unsupported_oses
 
   defdelegate active?, to: BacklightAutomation.Server
   defdelegate active_level(new_level), to: BacklightAutomation.Server

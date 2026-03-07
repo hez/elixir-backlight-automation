@@ -116,8 +116,16 @@ defmodule BacklightAutomation.Server do
 
   @impl GenServer
   def init(opts) do
-    state = opts |> BacklightAutomation.new() |> start_input_devices()
-    :timer.send_interval(@refresh_interval, self(), :refresh)
+    state =
+      if BacklightAutomation.supported_os?() do
+        :timer.send_interval(@refresh_interval, self(), :refresh)
+        opts |> BacklightAutomation.new() |> start_input_devices()
+      else
+        Logger.warning(
+          "Unsupported OS, backlight automation will not work. This server will still run, but won't do anything."
+        )
+      end
+
     {:ok, state}
   end
 
